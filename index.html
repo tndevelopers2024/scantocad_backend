@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Razorpay Payment</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+  <h2>Buy Hours</h2>
+  <label>Amount (₹): <input type="number" id="amount" value="500"></label><br>
+  <label>Hours: <input type="number" id="hours" value="5"></label><br><br>
+  <button onclick="startPayment()">Pay with Razorpay</button>
+
+  <script>
+    const backendBaseUrl = 'http://localhost:5000/api/v1/payments'; // 🔁 Change this
+    const razorpayKey = 'rzp_test_9prjSZS0QLvGyK'; // 🔁 Change this
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4MjM0ZDgxMDYzOTU4NjAyNDk1M2M0MyIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzQ3MTQ0NDg1LCJleHAiOjE3NDk3MzY0ODV9.hcdMELxjEyB4kZzM0h60hpYHYAQl62dBFsnaD1BXeT8'; // 🔁 Replace with real token (from login)
+
+    async function startPayment() {
+      const amount = parseInt(document.getElementById('amount').value);
+      const hours = parseInt(document.getElementById('hours').value);
+
+      try {
+        // 1. Create Razorpay Order from backend
+        const orderRes = await fetch(`${backendBaseUrl}/order`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ amount, hours })
+        });
+
+        const orderData = await orderRes.json();
+        if (!orderData.success) throw new Error("Failed to create order");
+
+        // 2. Open Razorpay checkout
+        const options = {
+          key: razorpayKey,
+          amount: orderData.order.amount,
+          currency: "INR",
+          name: "Test Purchase",
+          description: "Purchase Hours",
+          order_id: orderData.order.id,
+          handler: async function (response) {
+            // 3. Verify payment
+            const verifyRes = await fetch(`${backendBaseUrl}/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                amount: amount,
+                hours: hours
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              alert("Payment successful and stored!");
+            } else {
+              alert("Payment verification failed.");
+            }
+          },
+          theme: {
+            color: "#3399cc"
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.open();
+      } catch (err) {
+        alert("Error: " + err.message);
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
