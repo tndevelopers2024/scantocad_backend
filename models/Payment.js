@@ -10,7 +10,7 @@ const paymentSchema = new mongoose.Schema({
   },
   gateway: {
     type: String,
-    enum: ['razorpay', 'paypal'],
+    enum: ['razorpay', 'paypal','purchase_order'],
     required: true
   },
   orderId: String,
@@ -36,6 +36,16 @@ const paymentSchema = new mongoose.Schema({
   paymentDate: {
     type: Date,
     default: Date.now
+  },
+   // 👇 Add these for purchase_order support
+   purchaseOrderFile: {
+    type: String
+  },
+  fileType: {
+    type: String
+  },
+  fileSize: {
+    type: Number
   }
 });
 

@@ -7,20 +7,26 @@ const generateToken = require('../utils/generateToken');
 // @route   POST /api/v1/auth/register
 // @access  Public
 exports.register = asyncHandler(async (req, res, next) => {
-  const { name, email, password, role, company, phone } = req.body;
+  const { name, email, password, phone, role, company } = req.body;
 
-  // Create user
   const user = await User.create({
     name,
     email,
     password,
+    phone,
     role,
-    company,
-    phone
+    company: {
+      name: company?.name,
+      address: company?.address,
+      website: company?.website,
+      industry: company?.industry,
+      gstNumber: company?.gstNumber
+    }
   });
 
   sendTokenResponse(user, 200, res);
 });
+
 
 // @desc    Login user
 // @route   POST /api/v1/auth/login
@@ -66,11 +72,19 @@ exports.getMe = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/v1/auth/updatedetails
 // @access  Private
 exports.updateDetails = asyncHandler(async (req, res, next) => {
+  const { name, email, phone, company } = req.body;
+
   const fieldsToUpdate = {
-    name: req.body.name,
-    email: req.body.email,
-    company: req.body.company,
-    phone: req.body.phone
+    name,
+    email,
+    phone,
+    company: {
+      name: company?.name,
+      address: company?.address,
+      website: company?.website,
+      industry: company?.industry,
+      gstNumber: company?.gstNumber
+    }
   };
 
   const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
@@ -83,6 +97,7 @@ exports.updateDetails = asyncHandler(async (req, res, next) => {
     data: user
   });
 });
+
 
 // @desc    Update password
 // @route   PUT /api/v1/auth/updatepassword
@@ -134,7 +149,12 @@ const sendTokenResponse = (user, statusCode, res) => {
     .status(statusCode)
     .cookie('token', token, options)
     .json({
-      success: true,
+ success: true,
+ user: {
+ id: user._id,
+ name: user.name,
+ email: user.email,
+ },
       token,
       role: user.role
     });

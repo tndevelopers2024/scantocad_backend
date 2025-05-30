@@ -7,7 +7,9 @@ const {
   userDecision,
   completeQuotation,
   updateQuotation,
-  deleteQuotation
+  deleteQuotation,
+  getUserQuotations,
+  markQuotationOngoing 
 } = require('../controllers/quotationController');
 
 // Optional auth middleware
@@ -20,13 +22,16 @@ router.route('/')
   .get(getQuotations)
   .post(protect,requestQuotation);
 
+  router.get('/my-quotations', protect, getUserQuotations);
+
 router.route('/:id')
   .get(getQuotation)
   .put(updateQuotation)
   .delete(deleteQuotation);
 
 router.put('/:id/quote', protect, authorize('admin'), raiseQuote);
-router.put('/:id/decision', protect, authorize('user'), userDecision);
+router.put('/:id/decision', protect, authorize('user','client'), userDecision);
+router.put('/:id/ongoing', protect, authorize('admin'), markQuotationOngoing);
 router.put('/:id/complete', protect, authorize('admin'), completeQuotation);
 
 module.exports = router;

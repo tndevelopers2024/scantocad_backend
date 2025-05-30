@@ -4,7 +4,8 @@ const {
   getUser,
   createUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  getUserHours,
 } = require('../controllers/user');
 
 const User = require('../models/User');
@@ -13,18 +14,22 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Apply protect to all routes
 router.use(protect);
-router.use(authorize('admin'));
 
+// Only apply authorize('admin') to routes that need it
 router
   .route('/')
-  .get(advancedResults(User), getUsers)
-  .post(createUser);
+  .get(authorize('admin'), advancedResults(User), getUsers)
+  .post(authorize('admin'), createUser);
 
 router
   .route('/:id')
-  .get(getUser)
-  .put(updateUser)
-  .delete(deleteUser);
+  .get(authorize('admin', 'user','client'), getUser)  // Both admin and user can get single user
+  .put(authorize('admin'), updateUser)
+  .delete(authorize('admin'), deleteUser);
+
+// Special case for hours endpoint - only protect, no global authorize
+router.route('/:id/hours').get(getUserHours);
 
 module.exports = router;

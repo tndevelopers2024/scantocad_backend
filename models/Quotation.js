@@ -14,28 +14,22 @@ const quotationSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: [true, 'Please add a description'],
+    required: [false, 'Please add a description'],
     trim: true,
     maxlength: [500, 'Description cannot be more than 500 characters']
   },
   // Technical Information
-  dimensions: {
-    length: { type: Number, required: true },
-    width: { type: Number, required: true },
-    height: { type: Number, required: true }
-  },
-  scanType: {
+  technicalInfo: {
     type: String,
-    enum: ['laser', 'photogrammetry', 'structured-light', 'other'],
-    required: true
+    required: false
   },
   resolution: {
     type: String,
-    required: true
+    required: false
   },
   deadline: {
     type: Date,
-    required: true
+    required: false
   },
   requiredHour: {
     type: Number,
@@ -45,11 +39,11 @@ const quotationSchema = new mongoose.Schema({
   // Deliverables
   deliverables: {
     type: String,
-    trim: true,
+    trim: false,
     maxlength: [1000, 'Deliverables cannot be more than 1000 characters']
   },
   // File attachments
-  files: [String],
+  file: String,
   completedFile: {
     type: String,
     default: null
@@ -57,7 +51,7 @@ const quotationSchema = new mongoose.Schema({
   // Status
   status: {
     type: String,
-    enum: ['requested', 'quoted', 'approved', 'rejected', 'completed'],
+    enum: ['requested', 'quoted', 'approved', 'rejected', 'ongoing', 'completed'],
     default: 'requested'
   },
   notes: {

@@ -31,9 +31,31 @@ const userSchema = new mongoose.Schema({
     default: 'user'
   },
   company: {
-    type: String,
-    trim: true,
-    maxlength: [100, 'Company name cannot be more than 100 characters']
+    name: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Company name cannot be more than 100 characters']
+    },
+    address: {
+      type: String,
+      trim: true,
+      maxlength: [200, 'Address cannot be more than 200 characters']
+    },
+    website: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Website cannot be more than 100 characters']
+    },
+    industry: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Industry cannot be more than 100 characters']
+    },
+    gstNumber: {
+      type: String,
+      trim: true,
+      maxlength: [20, 'GST number cannot be more than 20 characters']
+    }
   },
   phone: {
     type: String,
@@ -42,7 +64,7 @@ const userSchema = new mongoose.Schema({
   },
   Hours: {
     type: Number,
-    default: 4, // 💡 Set default hours to 4
+    default: 4,
     min: [0, 'Purchased hours cannot be negative']
   },
   createdAt: {
@@ -56,22 +78,22 @@ const userSchema = new mongoose.Schema({
 });
 
 // Encrypt password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
-    next();
+    return next();
   }
-
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
 
-// Method to compare passwords
-userSchema.methods.matchPassword = async function(enteredPassword) {
+// Compare passwords
+userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Update the updatedAt field before saving
-userSchema.pre('save', function(next) {
+// Auto-update timestamp
+userSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
