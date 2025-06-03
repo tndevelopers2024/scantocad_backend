@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Payment Gateway</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="https://www.paypal.com/sdk/js?client-id=ASJQyCyGK6uKYaMMyOXb1wXXW1Q4OEcSJfxV_xYzXlccJZ-efkhFTtgim2mECDU4qZRtajbrkJBtqifY&currency=USD"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .payment-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    input {
+      padding: 8px;
+      margin-left: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #3399cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #2a7ca5;
+    }
+    #paypal-button-container {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Buy Hours</h2>
+  <div class="payment-form">
+    <div>
+      <label>Amount (₹):</label>
+      <input type="number" id="amount" value="500" min="1">
+    </div>
+    <div>
+      <label>Hours:</label>
+      <input type="number" id="hours" value="5" min="1">
+    </div>
+  </div>
+  
+  <button onclick="startRazorpayPayment()">Pay with Razorpay</button>
+  <button onclick="showPaypalButton()">Pay with PayPal</button>
+  
+  <div id="paypal-button-container"></div>
+
+  <script>
+    // Configuration - Update these values
+    const backendBaseUrl = 'https://5000-firebase-scantocadbackendgit-1747203690155.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev/api/v1/payments';
+    const razorpayKey = 'rzp_test_9prjSZS0QLvGyK'; // Your Razorpay test key
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4MjM0ZDgxMDYzOTU4NjAyNDk1M2M0MyIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzQ3MzgwNDM2LCJleHAiOjE3NDk5NzI0MzZ9.52clgOkwwflhDrpuqmmVrrvqYqnwLogYmXjDOUWbdR4'; // Your JWT token
+    let paypalButtonsRendered = false;
+
+    // Razorpay Payment Function
+    async function startRazorpayPayment() {
+      const amount = parseInt(document.getElementById('amount').value);
+      const hours = parseInt(document.getElementById('hours').value);
+
+      if (!amount || !hours || amount <= 0 || hours <= 0) {
+        alert("Please enter valid amount and hours");
+        return;
+      }
+
+      try {
+        // 1. Create Razorpay Order from backend
+        const orderRes = await fetch(`${backendBaseUrl}/order`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ amount, hours, gateway: 'razorpay' })
+        });
+
+        const orderData = await orderRes.json();
+        if (!orderData.success) throw new Error("Failed to create order");
+
+        // 2. Open Razorpay checkout
+        const options = {
+          key: razorpayKey,
+          amount: orderData.order.amount,
+          currency: "INR",
+          name: "Hours Purchase",
+          description: `Purchase of ${hours} hours`,
+          order_id: orderData.order.id,
+          handler: async function (response) {
+            // 3. Verify payment
+            const verifyRes = await fetch(`${backendBaseUrl}/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                gateway: 'razorpay',
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                amount: amount,
+                hours: hours
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              alert("Payment successful! Hours added to your account.");
+            } else {
+              alert("Payment verification failed: " + (verifyData.message || "Unknown error"));
+            }
+          },
+          prefill: {
+            name: "Customer Name", // You can populate this dynamically
+            email: "customer@example.com",
+            contact: "9999999999"
+          },
+          theme: {
+            color: "#3399cc"
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function(response) {
+          alert("Payment failed: " + response.error.description);
+        });
+        rzp.open();
+      } catch (err) {
+        alert("Error: " + err.message);
+        console.error(err);
+      }
+    }
+
+    // PayPal Payment Functions
+    function showPaypalButton() {
+      if (!paypalButtonsRendered) {
+        renderPaypalButton();
+        paypalButtonsRendered = true;
+      }
+      document.getElementById('paypal-button-container').style.display = 'block';
+    }
+
+    function renderPaypalButton() {
+      paypal.Buttons({
+        style: {
+          shape: 'rect',
+          color: 'blue',
+          layout: 'vertical',
+          label: 'paypal'
+        },
+        createOrder: async function(data, actions) {
+          const amount = parseInt(document.getElementById('amount').value);
+          const hours = parseInt(document.getElementById('hours').value);
+
+          if (!amount || !hours || amount <= 0 || hours <= 0) {
+            throw new Error("Please enter valid amount and hours");
+          }
+
+          try {
+            const orderRes = await fetch(`${backendBaseUrl}/order`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ amount, hours, gateway: 'paypal' })
+            });
+
+            const orderData = await orderRes.json();
+            if (!orderData.success) throw new Error("Failed to create order");
+            
+            return orderData.order.id; // Return PayPal order ID
+          } catch (err) {
+            console.error("PayPal order creation error:", err);
+            throw err;
+          }
+        },
+        onApprove: async function(data, actions) {
+          try {
+            // Capture the payment
+            const amount = parseInt(document.getElementById('amount').value);
+            const hours = parseInt(document.getElementById('hours').value);
+
+            const verifyRes = await fetch(`${backendBaseUrl}/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                gateway: 'paypal',
+                paypal_order_id: data.orderID,
+                amount: amount,
+                hours: hours
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              alert("Payment successful! Hours added to your account.");
+            } else {
+              alert("Payment verification failed: " + (verifyData.message || "Unknown error"));
+            }
+          } catch (err) {
+            console.error("PayPal payment error:", err);
+            alert("Payment processing error: " + err.message);
+          }
+        },
+        onError: function(err) {
+          console.error("PayPal error:", err);
+          alert("Payment failed: " + err.message);
+        }
+      }).render('#paypal-button-container');
+    }
+  </script>
+</body>
+</html>
